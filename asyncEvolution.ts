@@ -1,4 +1,4 @@
-type Grade = "vip" | "basic" | "gold";
+type Grade = 'vip' | 'basic' | 'gold';
 
 type User = {
   id: string;
@@ -9,9 +9,9 @@ type User = {
 type Callback<T> = (error: Error | null, value?: T) => void;
 
 const users: Record<string, User> = {
-  u1: { id: "u1", name: "kim", grade: "vip" },
-  u2: { id: "u2", name: "lee", grade: "basic" },
-  broken: { id: "broken", name: "park", grade: "gold" },
+  u1: { id: 'u1', name: 'kim', grade: 'vip' },
+  u2: { id: 'u2', name: 'lee', grade: 'basic' },
+  broken: { id: 'broken', name: 'park', grade: 'gold' },
 };
 
 const discountRates: Partial<Record<Grade, number>> = {
@@ -24,7 +24,7 @@ function getUserCallback(userId: string, callback: Callback<User>): void {
     const user = users[userId];
 
     if (!user) {
-      callback(new Error("USER_NOT_FOUND"));
+      callback(new Error('USER_NOT_FOUND'));
       return;
     }
 
@@ -34,13 +34,13 @@ function getUserCallback(userId: string, callback: Callback<User>): void {
 
 function getDiscountRateCallback(
   grade: Grade,
-  callback: Callback<number>
+  callback: Callback<number>,
 ): void {
   setTimeout(() => {
     const rate = discountRates[grade];
 
     if (rate == null) {
-      callback(new Error("RATE_NOT_FOUND"));
+      callback(new Error('RATE_NOT_FOUND'));
       return;
     }
 
@@ -54,7 +54,7 @@ function getUserPromise(userId: string): Promise<User> {
       const user = users[userId];
 
       if (!user) {
-        reject(new Error("USER_NOT_FOUND"));
+        reject(new Error('USER_NOT_FOUND'));
         return;
       }
 
@@ -69,7 +69,7 @@ function getDiscountRatePromise(grade: Grade): Promise<number> {
       const rate = discountRates[grade];
 
       if (rate == null) {
-        reject(new Error("RATE_NOT_FOUND"));
+        reject(new Error('RATE_NOT_FOUND'));
         return;
       }
 
@@ -81,7 +81,7 @@ function getDiscountRatePromise(grade: Grade): Promise<number> {
 function formatPaymentMessage(
   userName: string,
   originalPrice: number,
-  rate: number
+  rate: number,
 ): string {
   const finalPrice = originalPrice * (1 - rate);
   return `${userName}님의 최종 결제 금액은 ${finalPrice}원입니다.`;
@@ -91,22 +91,40 @@ function formatPaymentMessage(
 function buildPaymentMessageCallback(
   userId: string,
   originalPrice: number,
-  callback: Callback<string>
+  callback: Callback<string>,
 ): void {
-  throw new Error("TODO: implement buildPaymentMessageCallback");
+  return getUserCallback(userId, (error, user) => {
+    if (!user) return callback(error);
+
+    return getDiscountRateCallback(user.grade, (error, rate) => {
+      if (!rate) return callback(error);
+
+      return callback(
+        null,
+        formatPaymentMessage(user.name, originalPrice, rate),
+      );
+    });
+  });
 }
 
 async function buildPaymentMessagePromise(
   userId: string,
-  originalPrice: number
+  originalPrice: number,
 ): Promise<string> {
-  throw new Error("TODO: implement buildPaymentMessagePromise");
+  return getUserPromise(userId)
+    .then((user) => {
+      return getDiscountRatePromise(user.grade).then((rate) => ({
+        rate,
+        name: user.name,
+      }));
+    })
+    .then(({ rate, name }) => formatPaymentMessage(name, originalPrice, rate));
 }
 
 // 3. async/await 버전
 async function buildPaymentMessageAsync(
   userId: string,
-  originalPrice: number
+  originalPrice: number,
 ): Promise<string> {
   try {
     const user = await getUserPromise(userId);
